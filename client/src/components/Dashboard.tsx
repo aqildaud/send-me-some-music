@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import spotifyWebApi from 'spotify-web-api-node'
 import TrackSearch from "./TrackSearch";
 import Playlist from "./Playlist";
+import Player from "./Player";
 
 interface Props{
     code: any
@@ -24,7 +25,7 @@ interface PlaylistData {
     owner: string;
     totalSongs: number;
     albumImage: string;
-    tracks: { name: string; artist: string; album: string; trackId: string; }[];
+    tracks: { name: string; artist: string; album: string; trackId: string; trackUri: string; }[];
 }
 
 const spotifyApi = new spotifyWebApi({
@@ -37,9 +38,14 @@ function Dashboard({ code } : Props) {
     const [searchResults, setSearchResults] = useState<Track[]>([]);
     const [position, setPosition] = useState(0);
     const [playlist, setPlaylist] = useState<PlaylistData>({id: "", name: "", owner: "", totalSongs: 0, albumImage: "", tracks: []});
+    const [trackUri, setTrackUri] = useState("");
 
     function chooseTrack() {
         setSearch("");
+    }
+
+    function handlePlay(trackUri: any){
+        setTrackUri(trackUri);
     }
 
     function getPlaylist() {
@@ -58,7 +64,8 @@ function Dashboard({ code } : Props) {
                     trackId: item.track?.id || "",
                     name: item.track?.name || "",
                     album: item.track?.album.name || "",
-                    artist: item.track?.artists.map(artist => artist.name).join(", ") || ""
+                    artist: item.track?.artists.map(artist => artist.name).join(", ") || "",
+                    trackUri: item.track?.uri || ""
                 }))
             });
         })
@@ -73,6 +80,8 @@ function Dashboard({ code } : Props) {
 
     function addTrack(track: Track){
         if(!accessToken) return;
+        const checkTrack = playlist.tracks.some(item => item.trackId === track.trackId);
+        if(checkTrack) { console.log("Track is already in the playlist"); return; }
         spotifyApi.addTracksToPlaylist('4wxnQSsX1OPiHhv9QAuySC', [`spotify:track:${track.trackId}`], {position: position})
         .then(() => {
             console.log("Added to send me some music");
@@ -145,7 +154,10 @@ function Dashboard({ code } : Props) {
                 <div>
                     {searchResults.length ? (
                         searchResults.map(track => <TrackSearch track={track} key={track.uri} chooseTrack={chooseTrack} addTrack={addTrack}/>)
-                    ) : <Playlist playlist={playlist} /> }
+                    ) : <Playlist playlist={playlist} playTrack={handlePlay} /> }
+                </div>
+                <div className="position-absolute bottom-0 start-50 translate-middle-x" style={{width: "576px"}}>
+                    <Player trackUri={trackUri} accessToken={accessToken} />
                 </div>
             </div>
         </>
